@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+	http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+	http://www.springframework.org/schema/context
+	http://www.springframework.org/schema/context/spring-context-4.3.xsd
+	http://www.springframework.org/schema/tx
+	http://www.springframework.org/schema/tx/spring-tx-4.3.xsd
+	http://www.springframework.org/schema/aop
+	http://www.springframework.org/schema/aop/spring-aop-4.3.xsd">
+
+    <!--扫描Controller包，也可以指定扫描-->
+    <context:component-scan base-package="cn.smbms">
+        <!--排除过滤器exclude 方式annotation是注解-->
+        <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+    </context:component-scan>
+
+    <!--配置数据源-->
+    <bean id="datasource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+        <property name="username" value="root"/>
+        <property name="password" value="zhj123"/>
+        <property name="url" >
+            <value>
+                <![CDATA[jdbc:mysql://localhost:3306/smbms?useSSL=true&useUnicode=true&characterEncoding=utf-8&allowMultiQueries=true]]>
+            </value>
+        </property>
+        <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+    </bean>
+
+    <!--hibernate的session支持-->
+    <bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+        <!--引入数据源支持-->
+        <property name="dataSource" ref="datasource"/>
+        <!--Hibernate的配置-->
+        <property name="hibernateProperties">
+            <props>
+                <!--每个数据库都有其对应的Dialect方言以匹配其平台特性 -->
+                <prop key="hibernate.dialect">org.hibernate.dialect.MySQLDialect</prop>
+                <prop key="hibernate.cache.use_second_level_cache">false</prop>
+                <prop key="hibernate.cache.use_query_cache">false</prop>
+                <!--<prop key="hibernate.connection.autocommit">true</prop>-->
+                <!--指定当前session范围和上下文，当前会话和线程绑定 -->
+                <prop key="current_session_context_class">thread</prop>
+                <prop key="hibernate.current_session_context_class">
+                    org.springframework.orm.hibernate4.SpringSessionContext
+                </prop>
+                <!--学习时观察用-->
+                <!--是否将运行期生成的SQL输出到日志以供调试 -->
+                <prop key="hibernate.show_sql">true</prop>
+                <!--是否格式化SQL -->
+                <prop key="hibernate.format_sql">true</prop>
+            </props>
+        </property>
+        <!--扫描Hibernate实体及xml或者注解等等-->
+        <property name="packagesToScan">
+            <list>
+                <value>cn.smbms.pojo</value>
+            </list>
+        </property>
+    </bean>
+
+    <!--采用Hibernate事务管理-->
+    <bean id="transactionManager" class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+        <property name="sessionFactory" ref="sessionFactory"/>
+    </bean>
+
+    <!--事务Advice-->
+    <tx:advice id="txAdvice"  transaction-manager="transactionManager">
+        <tx:attributes>
+            <!--<tx:method name="get*" read-only="true" propagation="REQUIRED"/>
+            <tx:method name="list*" read-only="true" propagation="REQUIRED"/>
+            <tx:method name="find*" read-only="true" propagation="REQUIRED"/>-->
+            <tx:method name="*" rollback-for="Exception" propagation="REQUIRED"/>
+        </tx:attributes>
+    </tx:advice>
+    <!--aop切面-->
+    <aop:aspectj-autoproxy/>
+    <!--aop增强-->
+    <aop:config proxy-target-class="true">
+        <aop:advisor advice-ref="txAdvice" pointcut="execution(public * cn.smbms.service..*.*(..))"/>
+    </aop:config>
+
+
+    <!--开启事务注解-->
+    <!--<tx:annotation-driven transaction-manager="transactionManager"/>-->
+
+
+</beans>
